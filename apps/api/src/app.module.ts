@@ -10,6 +10,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { AuditModule } from './audit/audit.module';
 import { DepartmentsModule } from './departments/departments.module';
 import { AdminModule } from './admin/admin.module';
+import { ShareModule } from './share/share.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AdminModule } from './admin/admin.module';
     AuditModule,
     DepartmentsModule,
     AdminModule,
+    ShareModule,
   ],
   controllers: [AppController],
   providers: [AppService],

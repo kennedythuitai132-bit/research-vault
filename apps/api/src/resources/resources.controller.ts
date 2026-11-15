@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { RolesGuard } from '../auth/roles/roles.guard';
@@ -6,7 +6,7 @@ import { Roles } from '../auth/roles/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
+import { IsString, IsNumber, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
 
 class CreateResourceDto {
   @IsString() @IsNotEmpty() projectId!: string;
@@ -14,6 +14,7 @@ class CreateResourceDto {
   @IsString() @IsNotEmpty() filePath!: string;
   @IsString() @IsNotEmpty() mimeType!: string;
   @IsNumber() sizeBytes!: number;
+  @IsOptional() @IsArray() tags?: string[];
 }
 
 @ApiTags('resources')
@@ -34,7 +35,24 @@ export class ResourcesController {
     @Body() dto: CreateResourceDto,
   ) {
     if (!user.institutionId) throw new BadRequestException('User does not belong to an institution');
+    
     const resource = await this.prisma.withTenant(user.institutionId, async (tx) => {
+      // Check if a file with the same name already exists in this project
+      const existing = await tx.resource.findFirst({
+        where: { projectId: dto.projectId, name: dto.name, isLatest: true, deletedAt: null },
+      });
+
+      let version = 1;
+
+      if (existing) {
+        // Mark the old version as not latest
+        await tx.resource.update({
+          where: { id: existing.id },
+          data: { isLatest: false },
+        });
+        version = existing.version + 1;
+      }
+
       const newResource = await tx.resource.create({
         data: {
           projectId: dto.projectId,
@@ -43,21 +61,37 @@ export class ResourcesController {
           filePath: dto.filePath,
           mimeType: dto.mimeType,
           sizeBytes: BigInt(dto.sizeBytes),
+          version,
+          tags: dto.tags || [],
         },
       });
+
       await this.auditService.logAction(user.institutionId, user.id, 'UPLOAD_RESOURCE', 'Resource', newResource.id, tx);
       return newResource;
     });
+
     return { ...resource, sizeBytes: resource.sizeBytes.toString() };
   }
 
   @Get()
-  async listResources(@CurrentUser() user: { id: string; institutionId: string }) {
+  async listResources(
+    @CurrentUser() user: { id: string; institutionId: string },
+    @Query('projectId') projectId?: string,
+  ) {
     if (!user.institutionId) throw new BadRequestException('User does not belong to an institution');
-    const resources = await this.prisma.withTenant(user.institutionId, async (tx) => {
-      return tx.resource.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' } });
+    
+    return this.prisma.withTenant(user.institutionId, async (tx) => {
+      const resources = await tx.resource.findMany({
+        where: { 
+          deletedAt: null,
+          isLatest: true, // Only show the newest versions
+          ...(projectId && { projectId }),
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return resources.map((r) => ({ ...r, sizeBytes: r.sizeBytes.toString() }));
     });
-    return resources.map((r) => ({ ...r, sizeBytes: r.sizeBytes.toString() }));
   }
 
   @Delete(':id')
@@ -69,10 +103,7 @@ export class ResourcesController {
   ) {
     if (!user.institutionId) throw new BadRequestException('User does not belong to an institution');
     return this.prisma.withTenant(user.institutionId, async (tx) => {
-      await tx.resource.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
+      await tx.resource.update({ where: { id }, data: { deletedAt: new Date(), isLatest: false } });
       await this.auditService.logAction(user.institutionId, user.id, 'DELETE_RESOURCE', 'Resource', id, tx);
       return { success: true };
     });
