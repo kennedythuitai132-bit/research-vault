@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  INSTITUTION_ADMIN
+  RESEARCHER
+  AUDITOR
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  PENDING_REVIEW
+}
+
+enum ScopeType {
+  INSTITUTION
+  DEPARTMENT
+  PROJECT
+}
+
+enum ProjectRole {
+  REVIEWER
+  CONTRIBUTOR
+  VIEWER
+}
+
+model Institution {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  departments Department[]
+  projects    Project[]
+  auditLogs   AuditLog[]
+
+  @@map("institutions")
+}
+
+model User {
+  id            String   @id
+  institutionId String   @map("institution_id")
+  email         String   @unique
+  fullName      String   @map("full_name")
+  role          UserRole @default(RESEARCHER)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  institution     Institution      @relation(fields: [institutionId], references: [id])
+  resources       Resource[]       @relation("UploadedResources")
+  roleAssignments RoleAssignment[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Department {
+  id            String   @id @default(uuid())
+  institutionId String   @map("institution_id")
+  name          String
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  projects    Project[]
+
+  @@map("departments")
+}
+
+model Project {
+  id            String        @id @default(uuid())
+  institutionId String        @map("institution_id")
+  departmentId  String        @map("department_id")
+  name          String
+  status        ProjectStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  department  Department  @relation(fields: [departmentId], references: [id])
+  resources   Resource[]
+
+  @@map("projects")
+}
+
+model Resource {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  uploadedBy String   @map("uploaded_by")
+  name       String
+  filePath   String   @map("file_path")
+  mimeType   String   @map("mime_type")
+  sizeBytes  BigInt   @map("size_bytes")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  project  Project @relation(fields: [projectId], references: [id])
+  uploader User    @relation("UploadedResources", fields: [uploadedBy], references: [id])
+
+  @@map("resources")
+}
+
+model RoleAssignment {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  scopeType ScopeType   @map("scope_type")
+  scopeId   String      @map("scope_id")
+  role      ProjectRole
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("role_assignments")
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  institutionId String   @map("institution_id")
+  actorId       String   @map("actor_id")
+  action        String
+  targetType    String   @map("target_type")
+  targetId      String   @map("target_id")
+  metadata      Json?
+  prevHash      String?  @map("prev_hash")
+  rowHash       String   @map("row_hash")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  institution Institution @relation(fields: [institutionId], references: [id])
+  actor       User        @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
