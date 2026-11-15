@@ -1,0 +1,19 @@
+﻿{
+  "name": "research-vault",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Research Vault - Secure Research Data Management System",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=web",
+    "build:web": "npm run build --workspace=web",
+    "start:web": "npm run start --workspace=web",
+    "lint:web": "npm run lint --workspace=web"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}

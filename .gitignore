@@ -1,0 +1,46 @@
+﻿# dependencies
+node_modules/
+.npm/
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+
+# environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+
+# testing
+coverage/
+playwright-report/
+test-results/
+
+# Prisma
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# Supabase
+.supabase/
+
+# misc
+*.tsbuildinfo
+next-env.d.ts
