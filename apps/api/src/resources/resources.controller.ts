@@ -1,29 +1,19 @@
-import { Controller, Post, Get, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { IsString, IsNumber, IsNotEmpty } from 'class-validator';
 
 class CreateResourceDto {
-  @IsString()
-  @IsNotEmpty()
-  projectId!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  name!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  filePath!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  mimeType!: string;
-
-  @IsNumber()
-  sizeBytes!: number;
+  @IsString() @IsNotEmpty() projectId!: string;
+  @IsString() @IsNotEmpty() name!: string;
+  @IsString() @IsNotEmpty() filePath!: string;
+  @IsString() @IsNotEmpty() mimeType!: string;
+  @IsNumber() sizeBytes!: number;
 }
 
 @ApiTags('resources')
@@ -31,19 +21,21 @@ class CreateResourceDto {
 @UseGuards(SupabaseAuthGuard)
 @ApiBearerAuth()
 export class ResourcesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('CONTRIBUTOR', 'REVIEWER')
   async createResource(
     @CurrentUser() user: { id: string; institutionId: string },
     @Body() dto: CreateResourceDto,
   ) {
-    if (!user.institutionId) {
-      throw new BadRequestException('User does not belong to an institution');
-    }
-
+    if (!user.institutionId) throw new BadRequestException('User does not belong to an institution');
     const resource = await this.prisma.withTenant(user.institutionId, async (tx) => {
-      return tx.resource.create({
+      const newResource = await tx.resource.create({
         data: {
           projectId: dto.projectId,
           uploadedBy: user.id,
@@ -53,30 +45,36 @@ export class ResourcesController {
           sizeBytes: BigInt(dto.sizeBytes),
         },
       });
+      await this.auditService.logAction(user.institutionId, user.id, 'UPLOAD_RESOURCE', 'Resource', newResource.id, tx);
+      return newResource;
     });
-
-    return {
-      ...resource,
-      sizeBytes: resource.sizeBytes.toString(),
-    };
+    return { ...resource, sizeBytes: resource.sizeBytes.toString() };
   }
 
   @Get()
   async listResources(@CurrentUser() user: { id: string; institutionId: string }) {
-    if (!user.institutionId) {
-      throw new BadRequestException('User does not belong to an institution');
-    }
-
+    if (!user.institutionId) throw new BadRequestException('User does not belong to an institution');
     const resources = await this.prisma.withTenant(user.institutionId, async (tx) => {
-      return tx.resource.findMany({
-        orderBy: { createdAt: 'desc' },
-      });
+      return tx.resource.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' } });
     });
+    return resources.map((r) => ({ ...r, sizeBytes: r.sizeBytes.toString() }));
+  }
 
-    // Map over results to convert BigInt to string
-    return resources.map((r) => ({
-      ...r,
-      sizeBytes: r.sizeBytes.toString(),
-    }));
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('CONTRIBUTOR', 'REVIEWER')
+  async deleteResource(
+    @CurrentUser() user: { id: string; institutionId: string },
+    @Param('id') id: string,
+  ) {
+    if (!user.institutionId) throw new BadRequestException('User does not belong to an institution');
+    return this.prisma.withTenant(user.institutionId, async (tx) => {
+      await tx.resource.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      await this.auditService.logAction(user.institutionId, user.id, 'DELETE_RESOURCE', 'Resource', id, tx);
+      return { success: true };
+    });
   }
 }

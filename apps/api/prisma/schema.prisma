@@ -94,15 +94,16 @@ model Project {
 }
 
 model Resource {
-  id         String   @id @default(uuid())
-  projectId  String   @map("project_id")
-  uploadedBy String   @map("uploaded_by")
+  id         String    @id @default(uuid())
+  projectId  String    @map("project_id")
+  uploadedBy String    @map("uploaded_by")
   name       String
-  filePath   String   @map("file_path")
-  mimeType   String   @map("mime_type")
-  sizeBytes  BigInt   @map("size_bytes")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  filePath   String    @map("file_path")
+  mimeType   String    @map("mime_type")
+  sizeBytes  BigInt    @map("size_bytes")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
 
   project  Project @relation(fields: [projectId], references: [id])
   uploader User    @relation("UploadedResources", fields: [uploadedBy], references: [id])
