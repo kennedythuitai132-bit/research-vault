@@ -17,17 +17,18 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true,
   });
 
   const config = new DocumentBuilder()
     .setTitle('Research Vault API')
     .setDescription(
-      'Secure Research Data Management System - REST API. Phase 2 scaffolding: health check, validation pipeline, CORS, Swagger.',
+      'Secure Research Data Management System - REST API.',
     )
     .setVersion('0.1.0')
     .addTag('health', 'Service liveness and readiness')
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
@@ -35,10 +36,10 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = Number(configService.get<string>('PORT') ?? 4000);
 
-  await app.listen(port);
-  // eslint-disable-next-line no-console
+  // Force bind to 0.0.0.0 to avoid IPv6/localhost routing issues on Windows
+  await app.listen(port, '0.0.0.0');
+  
   console.log(`API listening at http://localhost:${port}`);
-  // eslint-disable-next-line no-console
   console.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
 void bootstrap();

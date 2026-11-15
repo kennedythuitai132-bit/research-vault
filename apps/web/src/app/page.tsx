@@ -47,9 +47,7 @@ export default function HomePage() {
           </Link>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Button disabled aria-disabled="true">
-              Sign in
-            </Button>
+            <Link href="/login"><Button>Sign in</Button></Link>
           </div>
         </div>
       </header>
