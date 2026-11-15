@@ -12,6 +12,36 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [resources, setResources] = useState<any[]>([]);
+
+  const fetchResources = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    try {
+      const res = await fetch('http://localhost:4000/resources', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setResources(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch resources", err);
+    }
+  };
+
+  const handleDownload = async (filePath: string) => {
+    // Generate a secure signed URL valid for 60 seconds
+    const { data, error } = await supabase.storage
+      .from('research-vault')
+      .createSignedUrl(filePath, 60);
+      
+    if (error) {
+      alert("Could not download file: " + error.message);
+    } else {
+      window.open(data.signedUrl, '_blank');
+    }
+  };
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -55,6 +85,7 @@ export default function DashboardPage() {
       }
 
       setUploadSuccess(true);
+      fetchResources();
       setFile(null);
     } catch (err: any) {
       setError(err.message);
@@ -98,6 +129,7 @@ export default function DashboardPage() {
     };
 
     fetchData();
+    fetchResources();
   }, [router]);
 
   const handleSignOut = async () => {
@@ -139,7 +171,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground mt-4 mb-2">Institution ID (from RLS):</p>
                 <p className="font-mono bg-muted p-2 rounded text-xs">{apiData.institutionId}</p>
                 <p className="text-sm text-green-500 mt-4 font-semibold">
-                  Ã¢Å“â€¦ Successfully fetched via secure API
+                  ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Successfully fetched via secure API
                 </p>
               </>
             ) : (
@@ -159,9 +191,45 @@ export default function DashboardPage() {
               {uploading ? "Uploading..." : "Upload"}
             </Button>
           </form>
+        {/* File List Table */}
+        <div className="p-6 border border-border rounded-lg bg-card md:col-span-2 mt-6">
+          <h2 className="text-xl font-semibold mb-4">Institution Research Files</h2>
+          {resources.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No files uploaded yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-muted-foreground uppercase bg-secondary/50">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Size</th>
+                    <th className="px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resources.map((r) => (
+                    <tr key={r.id} className="border-b border-border">
+                      <td className="px-4 py-3 font-medium">{r.name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.mimeType}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {(Number(r.sizeBytes) / 1024).toFixed(1)} KB
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button variant="outline" size="sm" onClick={() => handleDownload(r.filePath)}>
+                          Download
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
           {uploadSuccess && (
             <p className="text-sm text-green-500 mt-4">
-              ✅ File uploaded and metadata saved securely!
+              âœ… File uploaded and metadata saved securely!
             </p>
           )}
         </div>

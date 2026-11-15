@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Body, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -55,10 +55,28 @@ export class ResourcesController {
       });
     });
 
-    // Convert BigInt to string to prevent JSON serialization error
     return {
       ...resource,
       sizeBytes: resource.sizeBytes.toString(),
     };
+  }
+
+  @Get()
+  async listResources(@CurrentUser() user: { id: string; institutionId: string }) {
+    if (!user.institutionId) {
+      throw new BadRequestException('User does not belong to an institution');
+    }
+
+    const resources = await this.prisma.withTenant(user.institutionId, async (tx) => {
+      return tx.resource.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    // Map over results to convert BigInt to string
+    return resources.map((r) => ({
+      ...r,
+      sizeBytes: r.sizeBytes.toString(),
+    }));
   }
 }
