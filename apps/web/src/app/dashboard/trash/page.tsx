@@ -12,7 +12,7 @@ export default function TrashPage() {
   const fetchTrash = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/resources/trash", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/resources/trash`, {
       headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (res.ok) setResources(await res.json());

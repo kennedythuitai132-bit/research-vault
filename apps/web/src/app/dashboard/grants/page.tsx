@@ -19,8 +19,8 @@ export default function GrantsPage() {
     if (!session) return;
     const h = { Authorization: `Bearer ${session.access_token}` };
     const [grantRes, meRes] = await Promise.all([
-      fetch("${process.env.NEXT_PUBLIC_API_URL}/enterprise/grants", { headers: h }),
-      fetch("${process.env.NEXT_PUBLIC_API_URL}/users/me", { headers: h })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/enterprise/grants`, { headers: h }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers: h })
     ]);
     if (meRes.ok) setRole((await meRes.json()).role);
     if (grantRes.ok) setGrants(await grantRes.json());
@@ -32,7 +32,7 @@ export default function GrantsPage() {
     e.preventDefault();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/enterprise/grants", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/enterprise/grants`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ name, funder, amount: Number(amount), endDate: new Date(endDate) }),
     });

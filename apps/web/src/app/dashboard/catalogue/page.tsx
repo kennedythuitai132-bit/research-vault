@@ -20,7 +20,7 @@ export default function CataloguePage() {
     const h = { Authorization: `Bearer ${session.access_token}` };
     const [catRes, meRes] = await Promise.all([
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/enterprise/catalogue?search=${search}`, { headers: h }),
-      fetch("${process.env.NEXT_PUBLIC_API_URL}/users/me", { headers: h })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers: h })
     ]);
     if (meRes.ok) setRole((await meRes.json()).role);
     if (catRes.ok) setDatasets(await catRes.json());
@@ -32,7 +32,7 @@ export default function CataloguePage() {
     e.preventDefault();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/enterprise/catalogue", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/enterprise/catalogue`, {
       method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ name, description, classification }),
     });

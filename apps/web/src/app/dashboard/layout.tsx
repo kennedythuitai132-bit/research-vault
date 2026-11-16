@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!session) { router.push("/login"); return; }
       
       try {
-        const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/users/me", { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers: { Authorization: `Bearer ${session.access_token}` } });
         
         if (!res.ok) {
           if (res.status === 401) {

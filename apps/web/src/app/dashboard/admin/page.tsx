@@ -18,7 +18,7 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/admin/users", { headers: { Authorization: `Bearer ${session.access_token}` } });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, { headers: { Authorization: `Bearer ${session.access_token}` } });
     if (res.ok) setUsers(await res.json());
     setLoading(false);
   };

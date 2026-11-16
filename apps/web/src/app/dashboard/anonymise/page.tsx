@@ -16,7 +16,7 @@ export default function AnonymisePage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/enterprise/anonymise", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/enterprise/anonymise`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ datasetId }),

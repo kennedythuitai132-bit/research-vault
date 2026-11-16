@@ -18,10 +18,10 @@ export default function OverviewPage() {
       const h = { Authorization: `Bearer ${session.access_token}` };
 
       const [projRes, depRes, resRes, auditRes] = await Promise.all([
-        fetch("${process.env.NEXT_PUBLIC_API_URL}/projects", { headers: h }),
-        fetch("${process.env.NEXT_PUBLIC_API_URL}/departments", { headers: h }),
-        fetch("${process.env.NEXT_PUBLIC_API_URL}/resources", { headers: h }),
-        fetch("${process.env.NEXT_PUBLIC_API_URL}/audit", { headers: h })
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, { headers: h }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/departments`, { headers: h }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/resources`, { headers: h }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/audit`, { headers: h })
       ]);
 
       let pCount = 0, dCount = 0, fCount = 0, totalSize = 0;

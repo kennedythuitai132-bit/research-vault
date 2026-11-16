@@ -3,27 +3,13 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "framework": "nestjs",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "api",
-          "format": "url",
-          "env": "NEXT_PUBLIC_API_URL"
-        }
-      ]
+      "framework": "nestjs"
     },
     "web": {
       "root": "apps/web",
       "framework": "nextjs",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "api",
-          "format": "url",
-          "env": "NEXT_PUBLIC_API_URL"
-        }
-      ]
+      "installCommand": "cd ../.. && npm install",
+      "buildCommand": "cd ../.. && npm run build --workspace=web"
     }
   },
   "rewrites": [

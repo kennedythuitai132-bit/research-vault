@@ -21,9 +21,9 @@ export default function ProjectsPage() {
     const h = { Authorization: `Bearer ${session.access_token}` };
     
     const [pRes, dRes, meRes] = await Promise.all([
-      fetch("${process.env.NEXT_PUBLIC_API_URL}/projects", { headers: h }),
-      fetch("${process.env.NEXT_PUBLIC_API_URL}/departments", { headers: h }),
-      fetch("${process.env.NEXT_PUBLIC_API_URL}/users/me", { headers: h })
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, { headers: h }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/departments`, { headers: h }),
+      fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers: h })
     ]);
 
     if (meRes.ok) { const me = await meRes.json(); setRole(me.role); }
@@ -43,7 +43,7 @@ export default function ProjectsPage() {
     if (!newProjectName || !selectedDept) return;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/projects", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/projects`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ name: newProjectName, departmentId: selectedDept })

@@ -79,7 +79,7 @@ export default function ProjectDetails() {
     const filePath = `${session.user.user_metadata.institution_id}/${Date.now()}_${file.name}`;
     await supabase.storage.from("research-vault").upload(filePath, file);
 
-    const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/resources", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/resources`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify({ projectId, name: file.name, filePath, mimeType: file.type, sizeBytes: file.size }),
