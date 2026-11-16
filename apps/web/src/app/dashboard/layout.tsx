@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Folder, Building, Users, ScrollText, LogOut, LayoutDashboard, Trash2, Database, ShieldAlert, DollarSign } from "lucide-react";
+import { ShieldCheck, Folder, Building, Users, ScrollText, LogOut, LayoutDashboard, Trash2, Database, ShieldAlert, DollarSign, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +13,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -42,6 +43,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
     init();
   }, [router]);
+
+  // Close mobile menu when route changes
+  useEffect(() => { setIsMobileMenuOpen(false); }, [pathname]);
 
   const handleSignOut = async () => {
     if (!confirm("Are you sure you want to sign out?")) return;
@@ -81,13 +85,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ].filter(item => item.show);
 
   return (
-    <div className="flex h-screen bg-background">
-      <aside className="w-64 border-r border-border bg-card flex flex-col hidden md:flex">
-        <Link href="/dashboard" className="p-6 flex items-center gap-2 border-b border-border hover:bg-secondary/40 transition-colors">
+    <div className="flex h-screen bg-background overflow-hidden">
+      
+      {/* Mobile Top Bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border flex items-center justify-between px-4 z-50">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-6 w-6 text-primary" />
+          <span className="font-display font-bold text-lg">Research Vault</span>
+        </div>
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-foreground">
+          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
+      </div>
+
+      {/* Sidebar Overlay for Mobile */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <Link href="/dashboard" className="hidden md:flex p-6 items-center gap-2 border-b border-border hover:bg-secondary/40 transition-colors">
           <ShieldCheck className="h-6 w-6 text-primary" />
           <span className="font-display font-bold text-lg">Research Vault</span>
         </Link>
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        
+        <nav className="flex-1 p-4 pt-20 md:pt-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -100,6 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
         </nav>
+        
         <div className="p-4 border-t border-border">
           <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary mb-2">{role}</div>
           <p className="text-xs text-muted-foreground mb-3 truncate">{user.email}</p>
@@ -108,7 +132,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto"><div className="p-8 max-w-6xl mx-auto">{children}</div></main>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto w-full pt-16 md:pt-0">
+        <div className="p-4 md:p-8 max-w-6xl mx-auto">
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

@@ -206,8 +206,7 @@ export default function ProjectDetails() {
           <h3 className="text-lg font-semibold">No files match your filters</h3>
         </div>
       ) : (
-        <div className="border border-border rounded-lg bg-card overflow-hidden">
-          <table className="w-full text-sm text-left">
+        <div className="border border-border rounded-lg bg-card overflow-x-auto">`n        <table className="min-w-full" className="w-full text-sm text-left">
             <thead className="bg-secondary/50 text-xs uppercase text-muted-foreground select-none">
               <tr>
                 <th className="px-4 py-3 cursor-pointer hover:bg-secondary/80 transition-colors" onClick={() => requestSort("name")}><div className="flex items-center gap-1">Name <ArrowUpDown className="h-3 w-3" /></div></th>

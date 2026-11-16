@@ -48,8 +48,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-display font-bold">Admin Panel</h1>
-      <div className="border border-border rounded-lg bg-card overflow-hidden">
-        <table className="w-full text-sm text-left">
+      <div className="border border-border rounded-lg bg-card overflow-x-auto">`n        <table className="min-w-full text-sm text-left">
           <thead className="bg-secondary/50 text-xs uppercase text-muted-foreground">
             <tr>
               <th className="px-4 py-3">User</th>

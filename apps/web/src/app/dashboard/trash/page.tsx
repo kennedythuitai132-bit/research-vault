@@ -53,8 +53,7 @@ export default function TrashPage() {
           <h3 className="text-lg font-semibold">Trash is empty</h3>
         </div>
       ) : (
-        <div className="border border-border rounded-lg bg-card overflow-hidden">
-          <table className="w-full text-sm text-left">
+        <div className="border border-border rounded-lg bg-card overflow-x-auto">`n        <table className="min-w-full text-sm text-left">
             <thead className="bg-secondary/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">Name</th>
