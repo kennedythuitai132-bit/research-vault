@@ -12,150 +12,261 @@ enum UserRole {
   INSTITUTION_ADMIN
   RESEARCHER
   AUDITOR
-}
-
-enum ProjectStatus {
-  ACTIVE
-  ARCHIVED
-  PENDING_REVIEW
-}
-
-enum ScopeType {
-  INSTITUTION
-  DEPARTMENT
-  PROJECT
+  CONTRIBUTOR
+  REVIEWER
 }
 
 enum ProjectRole {
-  REVIEWER
-  CONTRIBUTOR
+  OWNER
+  EDITOR
   VIEWER
 }
 
 model Institution {
-  id        String   @id @default(uuid())
-  name      String
-  domain    String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  users       User[]
-  departments Department[]
-  projects    Project[]
-  auditLogs   AuditLog[]
+  id              String   @id @default(uuid())
+  name            String
+  domain          String   @unique
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  users           User[]
+  projects        Project[]
+  departments     Department[]
+  resources       Resource[]
+  auditLogs       AuditLog[]
+  researchDatasets ResearchDataset[]
+  grants          Grant[]
+  equipment       Equipment[]
 
   @@map("institutions")
 }
 
 model User {
-  id            String   @id
-  institutionId String   @map("institution_id")
-  email         String   @unique
-  fullName      String   @map("full_name")
-  role          UserRole @default(RESEARCHER)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  email           String   @unique
+  fullName        String   @map("full_name")
+  role            UserRole @default(RESEARCHER)
+  isApproved      Boolean  @default(false) @map("is_approved")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  institution     Institution      @relation(fields: [institutionId], references: [id])
-  resources       Resource[]       @relation("UploadedResources")
-  roleAssignments RoleAssignment[]
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  uploadedResources Resource[] @relation("UploadedBy")
   auditLogs       AuditLog[]
+  roleAssignments RoleAssignment[]
 
   @@map("users")
 }
 
 model Department {
-  id            String   @id @default(uuid())
-  institutionId String   @map("institution_id")
-  name          String
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  name            String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  institution Institution @relation(fields: [institutionId], references: [id])
-  projects    Project[]
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  projects        Project[]
 
   @@map("departments")
 }
 
 model Project {
-  id            String        @id @default(uuid())
-  institutionId String        @map("institution_id")
-  departmentId  String        @map("department_id")
-  name          String
-  status        ProjectStatus @default(ACTIVE)
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  departmentId    String   @map("department_id")
+  name            String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  institution Institution @relation(fields: [institutionId], references: [id])
-  department  Department  @relation(fields: [departmentId], references: [id])
-  resources   Resource[]
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  department      Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  resources       Resource[]
+  roleAssignments RoleAssignment[]
 
   @@map("projects")
 }
 
 model Resource {
-  id         String    @id @default(uuid())
-  projectId  String    @map("project_id")
-  uploadedBy String    @map("uploaded_by")
-  name       String
-  filePath   String    @map("file_path")
-  mimeType   String    @map("mime_type")
-  sizeBytes  BigInt    @map("size_bytes")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  deletedAt  DateTime? @map("deleted_at")
-  version    Int       @default(1)
-  isLatest   Boolean   @default(true) @map("is_latest")
-  tags       String[]  @default([])
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  projectId       String   @map("project_id")
+  uploadedBy      String   @map("uploaded_by")
+  name            String
+  filePath        String   @map("file_path")
+  mimeType        String   @map("mime_type")
+  sizeBytes       BigInt   @map("size_bytes")
+  version         Int      @default(1)
+  isLatest        Boolean  @default(true) @map("is_latest")
+  deletedAt       DateTime? @map("deleted_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  project     Project      @relation(fields: [projectId], references: [id])
-  uploader    User         @relation("UploadedResources", fields: [uploadedBy], references: [id])
-  sharedLinks SharedLink[]
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploader        User @relation("UploadedBy", fields: [uploadedBy], references: [id], onDelete: Cascade)
+  sharedLinks     SharedLink[]
 
   @@map("resources")
 }
 
-model RoleAssignment {
-  id        String      @id @default(uuid())
-  userId    String      @map("user_id")
-  scopeType ScopeType   @map("scope_type")
-  scopeId   String      @map("scope_id")
-  role      ProjectRole
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@map("role_assignments")
-}
-
 model AuditLog {
-  id            String   @id @default(uuid())
-  institutionId String   @map("institution_id")
-  actorId       String   @map("actor_id")
-  action        String
-  targetType    String   @map("target_type")
-  targetId      String   @map("target_id")
-  metadata      Json?
-  prevHash      String?  @map("prev_hash")
-  rowHash       String   @map("row_hash")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  actorId         String   @map("user_id") // Maps to userId/actorId
+  action          String
+  resourceType    String   @map("resource_type")
+  resourceId      String   @map("resource_id")
+  rowHash         String   @map("row_hash")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  institution Institution @relation(fields: [institutionId], references: [id])
-  actor       User        @relation(fields: [actorId], references: [id])
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  user            User @relation(fields: [actorId], references: [id], onDelete: Cascade)
 
   @@map("audit_logs")
 }
 
 model SharedLink {
-  id         String   @id @default(uuid())
-  resourceId String   @map("resource_id")
-  token      String   @unique
-  expiresAt  DateTime @map("expires_at")
-  createdBy  String   @map("created_by")
-  createdAt  DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  resourceId      String   @map("resource_id")
+  token           String   @unique
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  resource        Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
 
   @@map("shared_links")
+}
+
+model RoleAssignment {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  projectId       String   @map("project_id")
+  role            ProjectRole
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("role_assignments")
+}
+
+// ==========================================
+// FEATURE 1 & 2: CATALOGUE & ANONYMISATION
+// ==========================================
+model ResearchDataset {
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  name            String
+  description     String?
+  classification  String   @default("PUBLIC")
+  ownerId         String   @map("owner_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  @@map("research_datasets")
+}
+
+model AnonymisationJob {
+  id              String   @id @default(uuid())
+  datasetId       String   @map("dataset_id")
+  status          String   @default("PENDING")
+  reportUrl       String?  @map("report_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  @@map("anonymisation_jobs")
+}
+
+// ==========================================
+// FEATURE 4: LAB & EXPERIMENTS
+// ==========================================
+model Experiment {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  name            String
+  methodology     String?
+  status          String   @default("DRAFT")
+  createdAt       DateTime @default(now()) @map("created_at")
+  @@map("experiments")
+}
+
+model LaboratorySample {
+  id              String   @id @default(uuid())
+  experimentId    String   @map("experiment_id")
+  sampleCode      String   @unique @map("sample_code")
+  location        String?
+  status          String   @default("ACTIVE")
+  @@map("laboratory_samples")
+}
+
+// ==========================================
+// FEATURE 5: INTELLECTUAL PROPERTY
+// ==========================================
+model IntellectualProperty {
+  id              String   @id @default(uuid())
+  title           String
+  type            String
+  status          String   @default("DISCLOSED")
+  disclosureDate  DateTime @map("disclosure_date")
+  @@map("intellectual_property_records")
+}
+
+// ==========================================
+// FEATURE 6: DATA QUALITY
+// ==========================================
+model DataQualityCheck {
+  id              String   @id @default(uuid())
+  resourceId      String   @map("resource_id")
+  issuesFound     Int      @map("issues_found")
+  passed          Boolean  @default(false)
+  checkedAt       DateTime @default(now()) @map("checked_at")
+  @@map("data_quality_checks")
+}
+
+// ==========================================
+// FEATURE 8: GRANTS & FUNDING
+// ==========================================
+model Grant {
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  name            String
+  funder          String
+  amount          Float
+  currency        String   @default("USD")
+  endDate         DateTime @map("end_date")
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  @@map("grants")
+}
+
+// ==========================================
+// FEATURE 11 & 12: EXTERNAL COLLABORATION
+// ==========================================
+model ExternalCollaborator {
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  email           String
+  accessExpiresAt DateTime @map("access_expires_at")
+  @@map("external_collaborators")
+}
+
+// ==========================================
+// FEATURE 13 & 14: CALENDAR & EQUIPMENT
+// ==========================================
+model ResearchMilestone {
+  id              String   @id @default(uuid())
+  projectId       String   @map("project_id")
+  title           String
+  dueDate         DateTime @map("due_date")
+  status          String   @default("PENDING")
+  @@map("research_milestones")
+}
+
+model Equipment {
+  id              String   @id @default(uuid())
+  institutionId   String   @map("institution_id")
+  name            String
+  serialNumber    String   @unique @map("serial_number")
+  status          String   @default("AVAILABLE")
+  institution     Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  @@map("equipment")
 }

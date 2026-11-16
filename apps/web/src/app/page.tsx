@@ -47,7 +47,9 @@ export default function HomePage() {
           </Link>
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link href="/login"><Button>Sign in</Button></Link>
+            <Link href="/login">
+              <Button>Sign in</Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -69,16 +71,20 @@ export default function HomePage() {
               lifecycle.
             </p>
             <div className="mt-10 flex items-center justify-center gap-3">
-              <Button size="lg" disabled aria-disabled="true">
-                Sign in
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-              <Button size="lg" variant="outline" disabled aria-disabled="true">
-                Request invitation
-              </Button>
+              <Link href="/login">
+                <Button size="lg">
+                  Sign in
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button size="lg" variant="outline">
+                  Request invitation
+                </Button>
+              </Link>
             </div>
             <p className="mt-4 text-xs text-muted-foreground">
-              Authentication and onboarding are enabled in a later phase.
+              Ready to join? Sign in or request an invitation.
             </p>
           </div>
         </section>

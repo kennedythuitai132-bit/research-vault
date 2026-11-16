@@ -4,64 +4,90 @@ import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { 
-  ShieldCheck, Folder, Building, Users, ScrollText, LogOut, LayoutDashboard 
-} from "lucide-react";
+import { ShieldCheck, Folder, Building, Users, ScrollText, LogOut, LayoutDashboard, Trash2, Database, ShieldAlert, DollarSign } from "lucide-react";
+import { toast } from "sonner";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-      setUser(session.user);
-
-      // Fetch user role
-      const res = await fetch("http://localhost:4000/users/me", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (res.ok) {
+      if (!session) { router.push("/login"); return; }
+      
+      try {
+        const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/users/me", { headers: { Authorization: `Bearer ${session.access_token}` } });
+        
+        if (!res.ok) {
+          if (res.status === 401) {
+            setErrorMsg("Your account is pending admin approval, or you have been logged out.");
+            await supabase.auth.signOut();
+          } else {
+            const err = await res.json().catch(() => ({}));
+            setErrorMsg(`Server Error (${res.status}): ${err.message || "Check backend terminal"}`);
+          }
+          return;
+        }
+        
         const data = await res.json();
+        setUser(session.user);
         setRole(data.role);
+      } catch (e: any) {
+        setErrorMsg(`Network Error: ${e.message}. Is the backend running?`);
       }
     };
     init();
   }, [router]);
 
   const handleSignOut = async () => {
+    if (!confirm("Are you sure you want to sign out?")) return;
     await supabase.auth.signOut();
+    toast.success("Signed out");
     router.push("/");
   };
 
-  if (!user) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (errorMsg) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full border border-red-500/50 bg-red-500/10 p-6 rounded-lg text-center space-y-4">
+          <ShieldAlert className="h-10 w-10 text-red-500 mx-auto" />
+          <h2 className="text-xl font-bold text-red-500">Access Denied</h2>
+          <p className="text-sm text-foreground">{errorMsg}</p>
+          <Button onClick={() => { setErrorMsg(null); router.push("/login"); }}>Go to Login</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <div className="min-h-screen flex items-center justify-center animate-pulse">Checking permissions...</div>;
 
   const isAdmin = role === 'INSTITUTION_ADMIN' || role === 'SUPER_ADMIN';
   const isAuditor = role === 'AUDITOR';
 
   const navItems = [
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard, show: true },
+    { name: "Catalogue", href: "/dashboard/catalogue", icon: Database, show: true },
     { name: "Projects", href: "/dashboard/projects", icon: Folder, show: !isAuditor },
     { name: "Departments", href: "/dashboard/departments", icon: Building, show: !isAuditor },
+    { name: "Grants", href: "/dashboard/grants", icon: DollarSign, show: isAdmin || role === 'RESEARCHER' },
+    { name: "Anonymisation", href: "/dashboard/anonymise", icon: ShieldAlert, show: isAdmin || role === 'RESEARCHER' },
+    { name: "Trash", href: "/dashboard/trash", icon: Trash2, show: !isAuditor },
     { name: "Audit Trail", href: "/dashboard/audit", icon: ScrollText, show: isAdmin || isAuditor },
-    { name: "Admin Panel", href: "/dashboard/admin", icon: Users, show: isAdmin },
+    { name: "Admin Panel", href: "/dashboard/admin", icon: Users, show: isAdmin }, 
   ].filter(item => item.show);
 
   return (
     <div className="flex h-screen bg-background">
       <aside className="w-64 border-r border-border bg-card flex flex-col hidden md:flex">
-        <div className="p-6 flex items-center gap-2 border-b border-border">
+        <Link href="/dashboard" className="p-6 flex items-center gap-2 border-b border-border hover:bg-secondary/40 transition-colors">
           <ShieldCheck className="h-6 w-6 text-primary" />
           <span className="font-display font-bold text-lg">Research Vault</span>
-        </div>
-        
-        <nav className="flex-1 p-4 space-y-1">
+        </Link>
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -69,27 +95,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Link key={item.name} href={item.href} 
                 className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'}`}
               >
-                <Icon className="h-4 w-4" />
-                {item.name}
+                <Icon className="h-4 w-4" />{item.name}
               </Link>
             );
           })}
         </nav>
-
         <div className="p-4 border-t border-border">
-          <p className="text-xs font-semibold text-primary mb-1 uppercase tracking-wider">{role}</p>
+          <div className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary mb-2">{role}</div>
           <p className="text-xs text-muted-foreground mb-3 truncate">{user.email}</p>
           <Button variant="danger" className="w-full justify-start gap-2" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" /> Sign Out
           </Button>
         </div>
       </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8 max-w-6xl mx-auto">
-          {children}
-        </div>
-      </main>
+      <main className="flex-1 overflow-y-auto"><div className="p-8 max-w-6xl mx-auto">{children}</div></main>
     </div>
   );
 }

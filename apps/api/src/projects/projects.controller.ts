@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -6,13 +6,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { IsString, IsNotEmpty } from 'class-validator';
 
 class CreateProjectDto {
-  @IsString()
-  @IsNotEmpty()
-  name!: string;
-
-  @IsString()
-  @IsNotEmpty()
-  departmentId!: string;
+  @IsString() @IsNotEmpty() name!: string;
+  @IsString() @IsNotEmpty() departmentId!: string;
 }
 
 @ApiTags('projects')
@@ -28,24 +23,27 @@ export class ProjectsController {
     return this.prisma.withTenant(user.institutionId, async (tx) => {
       return tx.project.findMany({
         orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { resources: true } } },
       });
     });
   }
 
   @Post()
-  async createProject(
-    @CurrentUser() user: { id: string; institutionId: string },
-    @Body() dto: CreateProjectDto,
-  ) {
+  async createProject(@CurrentUser() user: { id: string; institutionId: string }, @Body() dto: CreateProjectDto) {
     if (!user.institutionId) throw new BadRequestException('No institution');
     return this.prisma.withTenant(user.institutionId, async (tx) => {
       return tx.project.create({
-        data: {
-          name: dto.name,
-          institutionId: user.institutionId,
-          departmentId: dto.departmentId,
-        },
+        data: { name: dto.name, institutionId: user.institutionId, departmentId: dto.departmentId },
       });
+    });
+  }
+
+  @Delete(':id')
+  async deleteProject(@CurrentUser() user: { id: string; institutionId: string }, @Param('id') id: string) {
+    if (!user.institutionId) throw new BadRequestException('No institution');
+    return this.prisma.withTenant(user.institutionId, async (tx) => {
+      await tx.project.delete({ where: { id } });
+      return { success: true };
     });
   }
 }

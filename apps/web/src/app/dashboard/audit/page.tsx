@@ -13,7 +13,7 @@ export default function AuditPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
-    const url = new URL("http://localhost:4000/audit");
+    const url = new URL("${process.env.NEXT_PUBLIC_API_URL}/audit");
     if (actionFilter) url.searchParams.append("action", actionFilter);
 
     const res = await fetch(url.toString(), {

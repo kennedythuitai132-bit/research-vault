@@ -1,36 +1,27 @@
-import { Controller, Get, UseGuards, BadRequestException, ForbiddenException, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { RolesGuard } from '../auth/roles/roles.guard';
+import { Roles } from '../auth/roles/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
 @ApiTags('audit')
 @Controller('audit')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(SupabaseAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class AuditController {
   constructor(private readonly prisma: PrismaService) {}
 
   @Get()
-  async getLogs(
-    @CurrentUser() user: { id: string; institutionId: string; role: string },
-    @Query('action') action?: string,
-    @Query('actorId') actorId?: string,
-  ) {
+  @Roles('INSTITUTION_ADMIN', 'SUPER_ADMIN', 'AUDITOR')
+  async getAuditLogs(@CurrentUser() user: { institutionId: string }) {
     if (!user.institutionId) throw new BadRequestException('No institution');
-    // Only Admins and Auditors can view audit logs
-    if (user.role !== 'INSTITUTION_ADMIN' && user.role !== 'SUPER_ADMIN' && user.role !== 'AUDITOR') {
-      throw new ForbiddenException('You do not have permission to view audit logs');
-    }
-
     return this.prisma.withTenant(user.institutionId, async (tx) => {
       return tx.auditLog.findMany({
-        where: {
-          ...(action && { action: { contains: action, mode: 'insensitive' } }),
-          ...(actorId && { actorId }),
-        },
         orderBy: { createdAt: 'desc' },
         take: 100,
+        include: { user: { select: { fullName: true, email: true } } },
       });
     });
   }

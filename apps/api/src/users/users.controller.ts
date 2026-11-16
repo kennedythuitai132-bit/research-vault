@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -13,21 +13,17 @@ export class UsersController {
 
   @Get('me')
   async getMe(@CurrentUser() user: { id: string; institutionId: string }) {
-    if (!user.institutionId) {
-      throw new UnauthorizedException('User does not belong to an institution');
-    }
-
-    // Use withTenant to enforce RLS
-    const dbUser = await this.prisma.withTenant(user.institutionId, async (tx) => {
-      return tx.user.findUnique({
-        where: { id: user.id },
-      });
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+        isApproved: true,
+        institutionId: true,
+      }
     });
-
-    if (!dbUser) {
-      throw new UnauthorizedException('User not found in database');
-    }
-
     return dbUser;
   }
 }

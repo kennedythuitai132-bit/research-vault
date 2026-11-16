@@ -11,36 +11,30 @@ export class AuditService {
     institutionId: string,
     actorId: string,
     action: string,
-    targetType: string,
-    targetId: string,
-    tx: Prisma.TransactionClient,
+    resourceType: string,
+    resourceId: string,
+    tx?: Prisma.TransactionClient,
   ) {
-    // 1. Get the most recent log for this institution to get the previous hash
-    const lastLog = await tx.auditLog.findFirst({
+    const db = tx || this.prisma;
+    
+    // We need to calculate a hash for the audit trail
+    const lastLog = await db.auditLog.findFirst({
       where: { institutionId },
       orderBy: { createdAt: 'desc' },
     });
 
     const prevHash = lastLog ? lastLog.rowHash : 'GENESIS';
+    const dataToHash = `${prevHash}${actorId}${action}${resourceType}${resourceId}${Date.now()}`;
+    const rowHash = crypto.createHash('sha256').update(dataToHash).digest('hex');
 
-    // 2. Calculate the new hash
-    // The hash is based on the content of this log + the previous hash
-    const timestamp = new Date().toISOString();
-    const payload = `${action}:${actorId}:${targetType}:${targetId}:${timestamp}:${prevHash}`;
-    
-    const rowHash = crypto.createHash('sha256').update(payload).digest('hex');
-
-    // 3. Insert the new log
-    return tx.auditLog.create({
+    return db.auditLog.create({
       data: {
         institutionId,
-        actorId,
+        actorId, // <-- FIXED: Maps to the new field
         action,
-        targetType,
-        targetId,
-        prevHash,
+        resourceType,
+        resourceId,
         rowHash,
-        metadata: { timestamp },
       },
     });
   }

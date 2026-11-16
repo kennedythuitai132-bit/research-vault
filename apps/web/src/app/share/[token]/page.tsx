@@ -16,7 +16,7 @@ export default function PublicSharePage() {
     setErrorMessage("");
     setData(null);
     try {
-      const res = await fetch(`http://localhost:4000/share/${token}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/share/${token}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setErrorType('expired');

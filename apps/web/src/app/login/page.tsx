@@ -94,21 +94,11 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="text-center text-sm">
-          <button
-            type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-primary hover:underline"
-          >
-            {isSignUp
-              ? "Already have an account? Sign in"
-              : "Need an account? Sign up"}
-          </button>
-        </div>
+        <div className="text-center text-sm text-muted-foreground">Don't have an account? <Link href="/register" className="text-primary hover:underline">Sign up</Link></div>
 
         <div className="text-center">
           <Link href="/" className="text-xs text-muted-foreground hover:underline">
-            ← Back to home
+            Ã¢â€ Â Back to home
           </Link>
         </div>
       </div>
