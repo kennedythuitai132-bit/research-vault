@@ -44,3 +44,7 @@ apps/api/prisma/*.db-journal
 # misc
 *.tsbuildinfo
 next-env.d.ts
+
+.env.production
+
+.env.production
