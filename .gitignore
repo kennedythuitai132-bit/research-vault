@@ -48,3 +48,11 @@ next-env.d.ts
 .env.production
 
 .env.production
+
+.env
+.env.local
+.env.production
+
+.env
+.env.local
+.env.production
