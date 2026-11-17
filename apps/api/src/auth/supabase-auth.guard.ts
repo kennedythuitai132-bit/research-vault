@@ -17,22 +17,33 @@ export class SupabaseAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const authHeader = request.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) throw new UnauthorizedException('Missing token');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ [AuthGuard] Missing or invalid Authorization header');
+      throw new UnauthorizedException('Missing token');
+    }
 
     const token = authHeader.split(' ')[1];
     const { data: { user }, error } = await this.supabase.auth.getUser(token);
-    if (error || !user) throw new UnauthorizedException('Invalid token');
 
-    const dbUser = await this.prisma.user.findUnique({ where: { id: user.id } });
-    if (!dbUser) throw new UnauthorizedException('User not found in database');
-    if (!dbUser.isApproved) throw new UnauthorizedException('Your account is pending admin approval.');
+    if (error || !user) {
+      console.log('❌ [AuthGuard] Supabase Auth Error:', error?.message);
+      throw new UnauthorizedException('Invalid token');
+    }
 
-    request.user = {
-      id: user.id,
-      email: user.email,
-      institutionId: dbUser.institutionId,
-      role: dbUser.role,
-    };
+    console.log('✅ [AuthGuard] Token valid for user:', user.email);
+
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: user.id },
+    });
+
+    if (!dbUser) {
+      console.log('❌ [AuthGuard] User not found in DB:', user.id);
+      throw new UnauthorizedException('User not found in database');
+    }
+
+    console.log('✅ [AuthGuard] DB User found:', dbUser.email, 'Role:', dbUser.role);
+    request.user = dbUser;
     return true;
   }
 }

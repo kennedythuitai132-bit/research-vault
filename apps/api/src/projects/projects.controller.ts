@@ -1,49 +1,27 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { IsString, IsNotEmpty } from 'class-validator';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
-class CreateProjectDto {
-  @IsString() @IsNotEmpty() name!: string;
-  @IsString() @IsNotEmpty() departmentId!: string;
-}
-
-@ApiTags('projects')
 @Controller('projects')
 @UseGuards(SupabaseAuthGuard)
-@ApiBearerAuth()
 export class ProjectsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) {}
 
   @Get()
-  async listProjects(@CurrentUser() user: { id: string; institutionId: string }) {
-    if (!user.institutionId) throw new BadRequestException('No institution');
-    return this.prisma.withTenant(user.institutionId, async (tx) => {
-      return tx.project.findMany({
-        orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { resources: true } } },
-      });
+  async listProjects() {
+    return this.prisma.project.findMany({
+      include: { department: true },
     });
   }
 
   @Post()
-  async createProject(@CurrentUser() user: { id: string; institutionId: string }, @Body() dto: CreateProjectDto) {
-    if (!user.institutionId) throw new BadRequestException('No institution');
-    return this.prisma.withTenant(user.institutionId, async (tx) => {
-      return tx.project.create({
-        data: { name: dto.name, institutionId: user.institutionId, departmentId: dto.departmentId },
-      });
-    });
-  }
-
-  @Delete(':id')
-  async deleteProject(@CurrentUser() user: { id: string; institutionId: string }, @Param('id') id: string) {
-    if (!user.institutionId) throw new BadRequestException('No institution');
-    return this.prisma.withTenant(user.institutionId, async (tx) => {
-      await tx.project.delete({ where: { id } });
-      return { success: true };
+  async createProject(@Body() body: { name: string; departmentId: string }, @Req() req: any) {
+    return this.prisma.project.create({
+      data: {
+        name: body.name,
+        departmentId: body.departmentId,
+        institutionId: req.user.institutionId,
+      },
     });
   }
 }

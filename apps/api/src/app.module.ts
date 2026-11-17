@@ -20,7 +20,7 @@ import { PublicModule } from './public/public.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     // Block IPs that make more than 50 requests per minute (global rate limit)
     ThrottlerModule.forRoot([{
       ttl: 60000,

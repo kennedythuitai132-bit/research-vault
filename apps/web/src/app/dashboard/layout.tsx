@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -13,38 +14,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.push("/login"); return; }
+      // 1. Get the initial session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
+      if (sessionError || !session) {
+        if (isMounted) router.push("/login");
+        return;
+      }
+
+      // 2. Fetch user data with the token
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, { headers: { Authorization: `Bearer ${session.access_token}` } });
-        
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }
+        });
+
         if (!res.ok) {
-          if (res.status === 401) {
-            setErrorMsg("Your account is pending admin approval, or you have been logged out.");
+          if (isMounted) {
+            setErrorMsg(res.status === 401 
+              ? "Your account is pending admin approval, or you have been logged out." 
+              : `Server Error (${res.status})`);
             await supabase.auth.signOut();
-          } else {
-            const err = await res.json().catch(() => ({}));
-            setErrorMsg(`Server Error (${res.status}): ${err.message || "Check backend terminal"}`);
           }
           return;
         }
-        
+
         const data = await res.json();
-        setUser(session.user);
-        setRole(data.role);
+        if (isMounted) {
+          setUser(session.user);
+          setRole(data.role);
+          setIsLoading(false);
+        }
       } catch (e: any) {
-        setErrorMsg(`Network Error: ${e.message}. Is the backend running?`);
+        if (isMounted) setErrorMsg(`Network Error: ${e.message}. Is the backend running?`);
       }
     };
+
     init();
+
+    // 3. Listen for auth changes (handles token refreshing)
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        if (isMounted) router.push("/login");
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
   }, [router]);
 
-  // Close mobile menu when route changes
   useEffect(() => { setIsMobileMenuOpen(false); }, [pathname]);
 
   const handleSignOut = async () => {
@@ -53,6 +79,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     toast.success("Signed out");
     router.push("/");
   };
+
+  if (isLoading && !errorMsg) {
+    return <div className="min-h-screen flex items-center justify-center animate-pulse">Checking permissions...</div>;
+  }
 
   if (errorMsg) {
     return (
@@ -67,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!user) return <div className="min-h-screen flex items-center justify-center animate-pulse">Checking permissions...</div>;
+  if (!user) return null;
 
   const isAdmin = role === 'INSTITUTION_ADMIN' || role === 'SUPER_ADMIN';
   const isAuditor = role === 'AUDITOR';
@@ -76,9 +106,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard, show: true },
     { name: "Catalogue", href: "/dashboard/catalogue", icon: Database, show: true },
     { name: "Projects", href: "/dashboard/projects", icon: Folder, show: !isAuditor },
-    { name: "Departments", href: "/dashboard/departments", icon: Building, show: !isAuditor },
+    { name: "Departments", href: "/dashboard/departments", icon: Building, show: !isAuditor},
     { name: "Grants", href: "/dashboard/grants", icon: DollarSign, show: isAdmin || role === 'RESEARCHER' },
-    { name: "Anonymisation", href: "/dashboard/anonymise", icon: ShieldAlert, show: isAdmin || role === 'RESEARCHER' },
+    { name: "Anonymisation", href: "/dashboard/anonymise", icon: ShieldAlert, show: isAdmin|| role === 'RESEARCHER' },
     { name: "Trash", href: "/dashboard/trash", icon: Trash2, show: !isAuditor },
     { name: "Audit Trail", href: "/dashboard/audit", icon: ScrollText, show: isAdmin || isAuditor },
     { name: "Admin Panel", href: "/dashboard/admin", icon: Users, show: isAdmin }, 
@@ -86,7 +116,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      
       {/* Mobile Top Bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-2">
@@ -104,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 border-r border-border bg-card flex flex-col transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0': '-translate-x-full md:translate-x-0'}`}>
         <Link href="/dashboard" className="hidden md:flex p-6 items-center gap-2 border-b border-border hover:bg-secondary/40 transition-colors">
           <ShieldCheck className="h-6 w-6 text-primary" />
           <span className="font-display font-bold text-lg">Research Vault</span>
